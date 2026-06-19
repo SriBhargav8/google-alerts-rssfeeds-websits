@@ -4,9 +4,20 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = 'admin@example.com';
-  const password = 'password';
-  const passwordHash = await bcrypt.hash(password, 10);
+  const email = process.env.ADMIN_EMAIL;
+  let passwordHash = process.env.ADMIN_PASSWORD_HASH;
+
+  if (!email || !passwordHash) {
+    console.error("Missing ADMIN_EMAIL or ADMIN_PASSWORD_HASH in environment variables. Cannot seed user.");
+    process.exit(1);
+  }
+
+  // If the hash is actually just a plain string (like during quick local dev setup), hash it.
+  // Real bcrypt hashes start with $2a$ or $2b$
+  if (!passwordHash.startsWith('$2a$') && !passwordHash.startsWith('$2b$')) {
+    console.log("ADMIN_PASSWORD_HASH doesn't look like a bcrypt hash, hashing it now...");
+    passwordHash = await bcrypt.hash(passwordHash, 10);
+  }
 
   const user = await prisma.user.upsert({
     where: { email },
@@ -14,7 +25,7 @@ async function main() {
     create: { email, passwordHash },
   });
 
-  console.log(`User seeded: ${user.email} / ${password}`);
+  console.log(`User seeded successfully with email: ${user.email}`);
 }
 
 main()

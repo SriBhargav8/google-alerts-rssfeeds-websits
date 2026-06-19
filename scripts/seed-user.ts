@@ -5,24 +5,28 @@ const prisma = new PrismaClient();
 
 async function main() {
   const email = process.env.ADMIN_EMAIL;
+  const rawPassword = process.env.ADMIN_PASSWORD;
   let passwordHash = process.env.ADMIN_PASSWORD_HASH;
 
-  if (!email || !passwordHash) {
-    console.error("Missing ADMIN_EMAIL or ADMIN_PASSWORD_HASH in environment variables. Cannot seed user.");
+  if (!email || (!rawPassword && !passwordHash)) {
+    console.error("Missing ADMIN_EMAIL or ADMIN_PASSWORD in environment variables. Cannot seed user.");
     process.exit(1);
   }
 
-  // If the hash is actually just a plain string (like during quick local dev setup), hash it.
-  // Real bcrypt hashes start with $2a$ or $2b$
-  if (!passwordHash.startsWith('$2a$') && !passwordHash.startsWith('$2b$')) {
-    console.log("ADMIN_PASSWORD_HASH doesn't look like a bcrypt hash, hashing it now...");
+  // If a raw password was provided, hash it automatically!
+  if (rawPassword) {
+    console.log("Found ADMIN_PASSWORD, automatically hashing it securely...");
+    passwordHash = await bcrypt.hash(rawPassword, 10);
+  } else if (passwordHash && !passwordHash.startsWith('$2a$') && !passwordHash.startsWith('$2b$')) {
+    // Fallback just in case they put raw text into the HASH variable
+    console.log("Hashing the provided password...");
     passwordHash = await bcrypt.hash(passwordHash, 10);
   }
 
   const user = await prisma.user.upsert({
     where: { email },
-    update: { passwordHash },
-    create: { email, passwordHash },
+    update: { passwordHash: passwordHash as string },
+    create: { email, passwordHash: passwordHash as string },
   });
 
   console.log(`User seeded successfully with email: ${user.email}`);

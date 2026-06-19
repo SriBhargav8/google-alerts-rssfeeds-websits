@@ -62,6 +62,8 @@ async function syncWorkflows() {
           } catch (e) {
             console.error(`  -> Network error triggering workflow:`, e);
           }
+        }, {
+          timezone: "Asia/Kolkata"
         });
 
         activeTasks[wf.id] = { task, schedule: wf.cronSchedule };

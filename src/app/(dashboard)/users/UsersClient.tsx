@@ -142,7 +142,7 @@ export default function UsersClient({ users, currentUserId }: { users: any[], cu
                     {user.role}
                   </span>
                 </td>
-                <td className="py-4 px-6 text-sm text-slate-500 font-medium">
+                <td className="py-4 px-6 text-sm text-slate-500 font-medium" suppressHydrationWarning>
                   {new Date(user.createdAt).toLocaleDateString()}
                 </td>
                 <td className="py-4 px-6 text-right">

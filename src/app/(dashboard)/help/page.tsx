@@ -185,9 +185,12 @@ export default function HelpPage() {
         <p className="text-slate-500 text-sm mb-6 max-w-md mx-auto">
           If you couldn't find the answer to your question, our support team is available to assist you with your configuration.
         </p>
-        <button className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-lg font-bold transition-all shadow-sm">
+        <a 
+          href="mailto:sri.growbizonline@gmail.com?subject=AutoFeed Dashboard Support Request&body=Hi Support Team,%0A%0AI need help with..."
+          className="inline-block bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-lg font-bold transition-all shadow-sm"
+        >
           Contact Support Team
-        </button>
+        </a>
       </div>
 
     </div>

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
+import { getSession, hasRole } from "@/lib/auth/server";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!hasRole(session, ["ADMIN", "EDITOR"])) {
+      return NextResponse.json({ error: "Unauthorized. Editor or Admin access required." }, { status: 403 });
+    }
+
     const { name, cronSchedule, feeds, integrationIds, destinationConfigs, aiProviderId, logoUrl, systemPrompt, isActive, generateImages, cmsContentFormat, includeSourceLink, scrapeFullContent, generationMode, maxIndividualPosts, enableStrictFiltering, useNofollowLinks } = await req.json();
 
     if (!name || !cronSchedule || !feeds || feeds.length === 0) {

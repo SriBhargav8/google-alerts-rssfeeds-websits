@@ -11,8 +11,8 @@ model User {
   id            String   @id @default(cuid())
   email         String   @unique
   passwordHash  String
-  name          String?  @default("Admin User")
-  role          String?  @default("Administrator")
+  name          String?  @default("User")
+  role          String?  @default("VIEWER") // ADMIN, EDITOR, VIEWER
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

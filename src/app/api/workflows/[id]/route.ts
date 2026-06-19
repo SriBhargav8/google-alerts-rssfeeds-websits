@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
+import { getSession, hasRole } from "@/lib/auth/server";
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const session = getSession(req);
+    if (!hasRole(session, ["ADMIN", "EDITOR"])) {
+      return NextResponse.json({ error: "Unauthorized. Editor or Admin access required." }, { status: 403 });
+    }
+
     const { name, cronSchedule, isActive, feeds, integrationIds, destinationConfigs, aiProviderId, logoUrl, systemPrompt, generateImages, cmsContentFormat, includeSourceLink, scrapeFullContent, generationMode, maxIndividualPosts, enableStrictFiltering, useNofollowLinks } = await req.json();
 
     if (!name || !cronSchedule || !feeds || feeds.length === 0) {
@@ -53,6 +59,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const session = getSession(req);
+    // Let's say only ADMIN can delete workflows
+    if (!hasRole(session, ["ADMIN"])) {
+      return NextResponse.json({ error: "Unauthorized. Admin access required." }, { status: 403 });
+    }
+
     // Delete the workflow (cascades or delete dependencies first)
     await prisma.rssFeed.deleteMany({ where: { workflowId: params.id } });
     await prisma.workflowDestination.deleteMany({ where: { workflowId: params.id } });

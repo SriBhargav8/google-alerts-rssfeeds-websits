@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Settings, Key, LogOut, Sparkles, Network, FileText, HelpCircle, Plus, ChevronLeft, ChevronRight, X, Sun, Moon, Laptop } from "lucide-react";
+import { LayoutDashboard, Settings, Key, LogOut, Sparkles, Network, FileText, HelpCircle, Plus, ChevronLeft, ChevronRight, X, Sun, Moon, Laptop, Users } from "lucide-react";
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -76,6 +76,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen, desktopCollapsed, s
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Workflows", href: "/workflows", icon: Network },
     { name: "Integrations", href: "/integrations", icon: Key },
+    { name: "Users", href: "/users", icon: Users },
     { name: "Settings", href: "/settings", icon: Settings },
     { name: "Logs", href: "/logs", icon: FileText },
   ];

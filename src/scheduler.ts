@@ -49,7 +49,8 @@ async function syncWorkflows() {
           console.log(`[${new Date().toISOString()}] Executing Scheduled Workflow: ${wf.name} (${wf.id})`);
           try {
             // Ping the Next.js API route to trigger the run asynchronously
-            const res = await fetch(`http://localhost:3000/api/workflows/${wf.id}/run`, {
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+            const res = await fetch(`${baseUrl}/api/workflows/${wf.id}/run`, {
               method: "POST"
             });
             if (res.ok) {

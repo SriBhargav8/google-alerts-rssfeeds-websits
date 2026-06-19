@@ -11,9 +11,14 @@ export async function publishToCMS(
 ): Promise<string> {
   const type = integration.type.toUpperCase();
   // credentials is stored as a JSON string in the DB
-  const credentials = typeof integration.credentials === "string"
+  const rawCredentials = typeof integration.credentials === "string"
     ? JSON.parse(integration.credentials)
     : integration.credentials;
+
+  // Dynamically import to avoid circular dependency issues at the top level
+  const { decryptIntegrationCredentials } = await import("@/lib/crypto/api-keys");
+  const credentials = decryptIntegrationCredentials(rawCredentials);
+
   
   if (type === "WORDPRESS") {
     const { url, username, password } = credentials as any;
@@ -255,9 +260,13 @@ export async function publishToCMS(
 export async function publishToSocial(integration: any, socialText: string, link: string) {
   const type = integration.type.toUpperCase();
   // credentials is stored as a JSON string in the DB
-  const credentials = typeof integration.credentials === "string"
+  const rawCredentials = typeof integration.credentials === "string"
     ? JSON.parse(integration.credentials)
     : integration.credentials;
+
+  const { decryptIntegrationCredentials } = await import("@/lib/crypto/api-keys");
+  const credentials = decryptIntegrationCredentials(rawCredentials);
+
   
   if (type === "TWITTER") {
     // Twitter v2 POST /tweets requires User Context (OAuth 2.0 User Access Token or OAuth 1.0a)

@@ -218,14 +218,16 @@ export default function Sidebar({ mobileOpen, setMobileOpen, desktopCollapsed, s
           </div>
         )}
 
-        <Link 
-          href="/help"
+        <a 
+          href="mailto:sri.growbizonline@gmail.com?subject=AutoFeed Dashboard Support Request&body=Hi Support Team,%0A%0AI need help with..."
+          target="_blank"
+          rel="noopener noreferrer"
           className={`flex items-center space-x-4 py-3 text-slate-400 hover:bg-white/5 hover:text-slate-200 font-medium transition-all w-full text-left ${desktopCollapsed ? 'px-0 justify-center' : 'px-6'}`}
-          title={desktopCollapsed ? "Help" : undefined}
+          title={desktopCollapsed ? "Contact Support" : undefined}
         >
           <HelpCircle size={20} className="flex-shrink-0" />
-          {!desktopCollapsed && <span className="text-sm whitespace-nowrap">Help</span>}
-        </Link>
+          {!desktopCollapsed && <span className="text-sm whitespace-nowrap">Contact Support</span>}
+        </a>
         <a 
           href="/api/auth/logout" 
           className={`flex items-center space-x-4 py-3 text-red-400 bg-red-500/10 hover:bg-red-500/20 hover:text-red-300 font-medium transition-all w-full text-left ${desktopCollapsed ? 'px-0 justify-center' : 'px-6'}`}

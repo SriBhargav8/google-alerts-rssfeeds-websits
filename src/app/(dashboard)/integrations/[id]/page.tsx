@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/client";
 import { notFound } from "next/navigation";
 import EditIntegrationForm from "./EditIntegrationForm";
+import { maskIntegrationCredentials } from "@/lib/crypto/api-keys";
 
 interface PageProps {
   params: {
@@ -17,7 +18,15 @@ export default async function EditIntegrationPage({ params }: PageProps) {
     notFound();
   }
 
+  let maskedIntegration = { ...integration };
+  try {
+    const creds = integration.credentials ? JSON.parse(integration.credentials) : {};
+    maskedIntegration.credentials = JSON.stringify(maskIntegrationCredentials(creds));
+  } catch (e) {
+    // Ignore parse error
+  }
+
   return (
-    <EditIntegrationForm integration={integration} />
+    <EditIntegrationForm integration={maskedIntegration} />
   );
 }

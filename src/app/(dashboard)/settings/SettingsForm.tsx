@@ -25,13 +25,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Rec
   } catch (e) {}
 
   if (initialProviders.length === 0) {
-    initialProviders.push({
-      id: crypto.randomUUID(),
-      type: "openai",
-      modelName: "gpt-4o",
-      apiKey: "sk-proj-mock-key-...",
-      isDefault: true
-    });
+    // Start empty
   }
 
   const [providers, setProviders] = useState<AiProviderConfig[]>(initialProviders);
@@ -213,88 +207,99 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Rec
             </div>
             
             <div className="p-6 space-y-4">
-              {providers.map((provider, index) => {
-                const isConfigured = provider.apiKey.length > 5;
+              {providers.length === 0 ? (
+                <div className="text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+                  <Bot className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                  <h3 className="text-sm font-bold text-slate-900">No AI Providers Configured</h3>
+                  <p className="text-xs text-slate-500 mt-1 mb-4">You need to add at least one AI provider (like OpenAI or Anthropic) to run automated workflows.</p>
+                  <button type="button" onClick={addProvider} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                    Add Your First AI Provider
+                  </button>
+                </div>
+              ) : (
+                providers.map((provider, index) => {
+                  const isConfigured = provider.apiKey.length > 5 && !provider.apiKey.includes("mock-key");
 
-                return (
-                  <div key={provider.id} className={`border rounded-xl p-5 bg-white relative transition-all flex flex-col sm:flex-row items-stretch sm:items-start gap-4 ${!isConfigured ? 'border-orange-200' : 'border-slate-200'}`}>
-                    
-                    {/* Icon */}
-                    <div className="self-start sm:self-auto">
-                      {getProviderIcon(provider.type)}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 space-y-3">
-                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <select 
-                            value={provider.type} 
-                            onChange={(e) => handleProviderChange(index, "type", e.target.value)}
-                            className="font-bold text-slate-900 text-base capitalize bg-transparent focus:outline-none cursor-pointer hover:bg-slate-50 rounded px-1 -ml-1"
-                          >
-                            <option value="openai">OpenAI</option>
-                            <option value="anthropic">Anthropic</option>
-                            <option value="openrouter">OpenRouter</option>
-                          </select>
-                          {isConfigured ? (
-                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold tracking-widest px-2 py-0.5 rounded uppercase">Connected</span>
-                          ) : (
-                            <span className="bg-orange-50 text-orange-700 border border-orange-100 text-[10px] font-bold tracking-widest px-2 py-0.5 rounded uppercase">Invalid Key</span>
-                          )}
-                        </div>
-
-                        {/* Default Toggle */}
-                        <div className="flex items-center space-x-3 self-end sm:self-auto">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Default</span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" className="sr-only peer" checked={provider.isDefault} onChange={() => setAsDefault(index)} />
-                            <div className={`w-11 h-6 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-300 transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${provider.isDefault ? "bg-indigo-600 after:translate-x-full after:border-white" : "bg-slate-200"}`}></div>
-                          </label>
-                        </div>
+                  return (
+                    <div key={provider.id} className={`border rounded-xl p-5 bg-white relative transition-all flex flex-col sm:flex-row items-stretch sm:items-start gap-4 ${!isConfigured ? 'border-orange-200' : 'border-slate-200'}`}>
+                      
+                      {/* Icon */}
+                      <div className="self-start sm:self-auto">
+                        {getProviderIcon(provider.type)}
                       </div>
 
-                      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full max-w-lg">
-                        <div className="flex flex-col flex-1 space-y-2">
-                          <input 
-                            type="text" 
-                            value={provider.modelName}
-                            onChange={(e) => handleProviderChange(index, "modelName", e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium"
-                            placeholder="Model (e.g., gpt-4o, claude-3-5-sonnet)"
-                          />
-                          <div className={`flex items-center border rounded-md bg-slate-50 px-3 py-2 ${!isConfigured ? 'border-red-300' : 'border-slate-200'}`}>
-                            <input 
-                              type={visibleKeys[provider.id] ? "text" : "password"}
-                              value={provider.apiKey}
-                              onChange={(e) => handleProviderChange(index, "apiKey", e.target.value)}
-                              className="w-full bg-transparent focus:outline-none text-sm font-mono tracking-widest text-slate-600"
-                              placeholder="sk-..."
-                            />
-                            <button
-                              type="button"
-                              onClick={() => toggleKeyVisibility(provider.id)}
-                              className="text-slate-400 hover:text-slate-600 focus:outline-none ml-2"
-                              title={visibleKeys[provider.id] ? "Hide API Key" : "Show API Key"}
+                      {/* Content */}
+                      <div className="flex-1 space-y-3">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <select 
+                              value={provider.type} 
+                              onChange={(e) => handleProviderChange(index, "type", e.target.value)}
+                              className="font-bold text-slate-900 text-base capitalize bg-transparent focus:outline-none cursor-pointer hover:bg-slate-50 rounded px-1 -ml-1"
                             >
-                              {visibleKeys[provider.id] ? <EyeOff size={16} /> : <Eye size={16} />}
-                            </button>
+                              <option value="openai">OpenAI</option>
+                              <option value="anthropic">Anthropic</option>
+                              <option value="openrouter">OpenRouter</option>
+                            </select>
+                            {isConfigured ? (
+                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold tracking-widest px-2 py-0.5 rounded uppercase">Connected</span>
+                            ) : (
+                              <span className="bg-orange-50 text-orange-700 border border-orange-100 text-[10px] font-bold tracking-widest px-2 py-0.5 rounded uppercase">Invalid Key</span>
+                            )}
+                          </div>
+
+                          {/* Default Toggle */}
+                          <div className="flex items-center space-x-3 self-end sm:self-auto">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Default</span>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" className="sr-only peer" checked={provider.isDefault} onChange={() => setAsDefault(index)} />
+                              <div className={`w-11 h-6 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-300 transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${provider.isDefault ? "bg-indigo-600 after:translate-x-full after:border-white" : "bg-slate-200"}`}></div>
+                            </label>
                           </div>
                         </div>
-                        <button 
-                          type="button" 
-                          onClick={() => requestDeleteProvider(index)} 
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors self-end sm:self-center mb-2"
-                          title="Delete Provider"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
 
+                        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full max-w-lg">
+                          <div className="flex flex-col flex-1 space-y-2">
+                            <input 
+                              type="text" 
+                              value={provider.modelName}
+                              onChange={(e) => handleProviderChange(index, "modelName", e.target.value)}
+                              className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium"
+                              placeholder="Model (e.g., gpt-4o, claude-3-5-sonnet)"
+                            />
+                            <div className={`flex items-center border rounded-md bg-slate-50 px-3 py-2 ${!isConfigured ? 'border-red-300' : 'border-slate-200'}`}>
+                              <input 
+                                type={visibleKeys[provider.id] ? "text" : "password"}
+                                value={provider.apiKey}
+                                onChange={(e) => handleProviderChange(index, "apiKey", e.target.value)}
+                                className="w-full bg-transparent focus:outline-none text-sm font-mono tracking-widest text-slate-600"
+                                placeholder="sk-..."
+                              />
+                              <button
+                                type="button"
+                                onClick={() => toggleKeyVisibility(provider.id)}
+                                className="text-slate-400 hover:text-slate-600 focus:outline-none ml-2"
+                                title={visibleKeys[provider.id] ? "Hide API Key" : "Show API Key"}
+                              >
+                                {visibleKeys[provider.id] ? <EyeOff size={16} /> : <Eye size={16} />}
+                              </button>
+                            </div>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => requestDeleteProvider(index)} 
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors self-end sm:self-center mb-2"
+                            title="Delete Provider"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 

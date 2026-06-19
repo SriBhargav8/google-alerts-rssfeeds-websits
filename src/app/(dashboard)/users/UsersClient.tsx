@@ -4,7 +4,7 @@ import { Users, UserPlus, Search, Shield, ShieldAlert, Trash2, X, Edit, Lock } f
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function UsersClient({ users }: { users: any[] }) {
+export default function UsersClient({ users, currentUserId }: { users: any[], currentUserId?: string | null }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [userToDelete, setUserToDelete] = useState<any | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -146,12 +146,14 @@ export default function UsersClient({ users }: { users: any[] }) {
                   {new Date(user.createdAt).toLocaleDateString()}
                 </td>
                 <td className="py-4 px-6 text-right">
-                  <button 
-                    onClick={() => setUserToDelete(user)}
-                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-block"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  {user.id !== currentUserId && (
+                    <button 
+                      onClick={() => setUserToDelete(user)}
+                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

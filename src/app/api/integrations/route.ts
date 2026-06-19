@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
+import { encryptIntegrationCredentials, maskIntegrationCredentials } from "@/lib/crypto/api-keys";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,16 +11,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const encryptedCredentials = encryptIntegrationCredentials(credentials);
+
     const integration = await prisma.integration.create({
       data: {
         name,
         type,
-        credentials: JSON.stringify(credentials),
+        credentials: JSON.stringify(encryptedCredentials),
       },
     });
 
-    return NextResponse.json({ success: true, integration });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const maskedIntegration = {
+      ...integration,
+      credentials: maskIntegrationCredentials(encryptedCredentials),
+    };
+
+    return NextResponse.json({ success: true, integration: maskedIntegration });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
   }
 }

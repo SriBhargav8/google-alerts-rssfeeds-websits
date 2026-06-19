@@ -25,10 +25,12 @@ export async function POST(req: NextRequest) {
 
     const response = NextResponse.json({ success: true, message: "Logged in successfully" });
     
+    const isHttps = req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https";
+
     // Set cookie
     response.cookies.set("auth_token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps,
       maxAge: 60 * 60 * 24, // 1 day
       path: "/",
     });

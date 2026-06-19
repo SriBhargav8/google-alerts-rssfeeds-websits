@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String?  @default("Admin User")
+  role          String?  @default("Administrator")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Workflow {
+  id             String   @id @default(cuid())
+  name           String
+  cronSchedule   String   // e.g. "0 8 * * *"
+  isActive       Boolean  @default(true)
+  aiProviderId   String?  // Reference to a specific AI provider config ID, null means use default
+  logoUrl        String?
+  systemPrompt   String?  // Optional custom system prompt template with shortcodes
+  generateImages Boolean  @default(false) // Toggle hero image generation on or off
+  cmsContentFormat String @default("LEXICAL") // HTML or LEXICAL format for publishing to CMS
+  includeSourceLink Boolean @default(false) // Toggle whether to instruct AI to include source links
+  scrapeFullContent Boolean @default(false) // Toggle whether to scrape full article content
+  
+  generationMode     String   @default("ROUNDUP") // ROUNDUP, INDIVIDUAL, BOTH
+  maxIndividualPosts Int      @default(5)         // Max posts for individual mode
+  enableStrictFiltering Boolean @default(true)
+  useNofollowLinks   Boolean  @default(true)      // Whether to add rel="nofollow" to source links
+  
+  // Relations
+  feeds          RssFeed[]
+  destinations   WorkflowDestination[]
+  runs           WorkflowRun[]
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model RssFeed {
+  id             String   @id @default(cuid())
+  url            String
+  label          String?
+  workflowId     String
+  workflow       Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  
+  items          RssItem[]
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model RssItem {
+  id             String   @id @default(cuid())
+  feedId         String
+  feed           RssFeed  @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  itemUrl        String   @unique // Hashed URL for dedup
+  title          String
+  snippet        String?
+  source         String?
+  publishedAt    DateTime?
+  fetchedAt      DateTime @default(now())
+  processed      Boolean  @default(false)
+}
+
+
+
+model Integration {
+  id             String   @id @default(cuid())
+  name           String   // e.g. "Main Tech Blog", "My LinkedIn"
+  type           String
+  
+  // Credentials (encrypted JSON)
+  credentials    String
+  
+  workflows      WorkflowDestination[]
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model WorkflowDestination {
+  id             String      @id @default(cuid())
+  workflowId     String
+  workflow       Workflow    @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  integrationId  String
+  integration    Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  
+  // JSON string for destination-specific config (e.g. { autoPublish: true })
+  config         String?     
+  
+  @@unique([workflowId, integrationId])
+}
+
+model WorkflowRun {
+  id             String   @id @default(cuid())
+  workflowId     String
+  workflow       Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  status         String   // PENDING, SUCCESS, FAILED
+  errorLog       String?
+  logs           String?  // JSON array of detailed execution steps
+  durationMs     Int?
+  
+  blogPosts      BlogPost[]
+  socialPosts    SocialPost[]
+  
+  createdAt      DateTime @default(now())
+  completedAt    DateTime?
+}
+
+model BlogPost {
+  id               String   @id @default(cuid())
+  runId            String
+  run              WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  title            String
+  summary          String?
+  content          String
+  metaTitle        String?
+  metaDescription  String?
+  tags             String?
+  imagePath        String?
+  cmsPostId        String?
+  cmsUrl           String?
+  publishedAt      DateTime?
+  status           String   // DRAFT, PUBLISHED, FAILED
+  
+  socialPosts      SocialPost[]
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model SocialPost {
+  id               String   @id @default(cuid())
+  blogPostId       String
+  blogPost         BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+  runId            String
+  run              WorkflowRun @relation(fields: [runId], references: [id])
+  platform         String
+  postId           String?
+  postUrl          String?
+  postedAt         DateTime?
+  status           String   // PENDING, SUCCESS, FAILED
+  error            String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model AppSettings {
+  key              String   @id
+  value            String
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  title       String
+  message     String
+  type        String   // INFO, SUCCESS, ERROR, WARNING
+  read        Boolean  @default(false)
+  workflowId  String?
+  runId       String?
+  createdAt   DateTime @default(now())
+}
+

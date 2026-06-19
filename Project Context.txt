@@ -1,0 +1,385 @@
+Project Prompt: AI-Powered Content Automation Pipeline
+
+Overview
+Build a self-contained web application (no n8n, no third-party automation tools) that monitors Google Alerts RSS feeds, clusters daily news using AI, generates a roundup blog post with a branded image, publishes it to a website, and cross-posts to LinkedIn and Twitter/X — all automatically on a daily schedule.
+
+Core Features
+1. RSS Feed Ingestion
+
+Fetch one or multiple Google Alerts RSS feeds daily via cron
+Parse feed items (title, link, source, published date, snippet)
+Deduplicate items across days using URL hashing stored in DB
+Handle empty feeds, malformed XML, and network failures gracefully
+
+2. AI Clustering and Content Generation
+
+Send all fetched items to Claude/OpenAI API
+Cluster related stories and pick Top 5 for the day
+Generate a single daily roundup blog post (title, intro, 5 story sections, conclusion)
+Generate SEO meta title, meta description, and tags automatically
+
+3. Image Generation
+
+Use Playwright to render a branded HTML card template (headline + date + logo)
+Screenshot it as a high-quality PNG — no DALL-E dependency
+Store image in your media library (S3 or local)
+
+4. Website Publishing
+
+Publish the blog post via Payload CMS REST API or WordPress REST API
+Store the returned blog post URL, post ID, and publish timestamp in DB
+Support draft mode (review before publish) and auto-publish mode
+
+5. Social Cross-Posting
+
+After successful blog publish, post to LinkedIn and Twitter/X with:
+
+Summarized text (AI-generated, platform-specific character limits)
+Blog post URL
+Image attachment (if platform supports it)
+
+
+Store social post IDs and timestamps per platform
+
+6. Dashboard (Admin UI)
+
+View all daily runs — date, status, blog URL, social post links
+See what was published, at what time, on which platform
+Manual trigger option (run pipeline now)
+Retry failed steps individually (re-generate, re-publish, re-post)
+View raw fetched RSS items per day
+Toggle auto-publish ON/OFF per platform
+
+
+Database Schema (PostgreSQL)
+rss_items         — id, feed_url, item_url (unique hash), title, snippet, source, fetched_at, processed
+daily_runs        — id, run_date (unique), status, created_at, completed_at, error_log
+blog_posts        — id, run_id, title, content, meta_title, meta_description, tags, image_path, cms_post_id, cms_url, published_at, status
+social_posts      — id, blog_post_id, platform (linkedin/twitter), post_id, post_url, posted_at, status, error
+alerts_config     — id, feed_url, label, is_active, created_at
+app_settings      — key, value (stores tokens, toggles, config)
+
+Auth and Security
+Application Auth
+
+Single admin login (no public signup) — email + password
+JWT-based session with refresh token rotation
+All dashboard routes protected behind middleware auth check
+Rate limiting on login endpoint (max 5 attempts, 15 min lockout)
+
+API Keys and Tokens Storage
+
+All secrets (OpenAI key, LinkedIn token, X API keys, CMS API key) stored in environment variables only — never in DB plain text
+If storing OAuth tokens in DB (LinkedIn refresh token) — encrypt using AES-256 before storing
+Never expose API keys to frontend — all AI and social API calls go through your backend only
+
+OAuth Token Management
+
+LinkedIn access token expires in 60 days — store encrypted refresh token in DB, auto-refresh before expiry
+X API uses OAuth 1.0a or OAuth 2.0 — store access + secret tokens encrypted
+Alert via dashboard if any token is expired or about to expire (within 7 days)
+
+Webhook / Endpoint Security
+
+If exposing any endpoint for manual triggers — require Bearer token auth
+CORS locked to your own domain only
+All publish and post actions logged with timestamp and actor (cron vs manual)
+
+Audit Log
+
+Every action logged: RSS fetch, AI call, image gen, blog publish, social post, manual retries
+Log includes: timestamp, action, status, response summary, error if any
+Logs stored in DB and viewable in dashboard — never auto-deleted (archive after 90 days)
+
+
+Tech Stack
+LayerTechFrontend + BackendNext.js 14 (App Router)DatabasePostgreSQL + PrismaAuthNextAuth.js or custom JWTCronVercel Cron Jobs or node-cron on VPSRSS Parsingrss-parser (npm)AIClaude API or OpenAI APIImage GenPlaywright (HTML card screenshot)CMS PublishPayload CMS REST or WordPress RESTSocial APIsLinkedIn API v2 + X API v2File StorageAWS S3 or local /public folderEncryptionNode.js crypto (AES-256-GCM)
+
+Pipeline Flow (Daily Cron)
+1. Cron triggers at scheduled time (e.g. 8:00 AM)
+2. Fetch all active Google Alerts RSS feeds
+3. Deduplicate against previously processed URLs
+4. If < 3 new items → skip run, log "insufficient content"
+5. Send items to AI → cluster → pick Top 5 → generate blog post + social text
+6. Render HTML image card → Playwright screenshot → save to storage
+7. Publish blog post to CMS → receive post URL + ID → save to DB
+8. Post to LinkedIn → save post ID + timestamp
+9. Post to Twitter/X → save tweet ID + timestamp
+10. Mark daily_run as completed → update dashboard
+
+Edge Cases to Handle
+
+Google Alerts feed returns 0 items — skip gracefully, log it
+AI API timeout or error — retry once, then mark run as failed
+CMS publish fails — do not post to social, mark for manual retry
+Social post fails — blog is already live, just retry social independently
+Duplicate run for same date — block at DB level (unique constraint on run_date)
+Token expiry — surface warning in dashboard 7 days before
+
+
+Environment Variables Required
+DATABASE_URL
+OPENAI_API_KEY or ANTHROPIC_API_KEY
+LINKEDIN_CLIENT_ID
+LINKEDIN_CLIENT_SECRET
+LINKEDIN_ACCESS_TOKEN (encrypted in DB, seed from here)
+TWITTER_API_KEY
+TWITTER_API_SECRET
+TWITTER_ACCESS_TOKEN
+TWITTER_ACCESS_SECRET
+CMS_API_URL
+CMS_API_KEY
+STORAGE_PATH or AWS_S3_BUCKET
+ENCRYPTION_SECRET (32-byte key for AES-256)
+ADMIN_EMAIL
+ADMIN_PASSWORD_HASH
+CRON_SECRET (for securing manual trigger endpoint)
+
+
+# Folder Structure — AI Content Automation Pipeline
+# Next.js 14 App Router + Prisma + PostgreSQL
+
+```
+project-root/
+│
+├── prisma/
+│   ├── schema.prisma                        # Full DB schema
+│   └── migrations/                          # Auto-generated by Prisma
+│
+├── public/
+│   └── generated-images/                    # Playwright screenshots (if local storage)
+│
+├── src/
+│   │
+│   ├── app/                                 # Next.js App Router
+│   │   │
+│   │   ├── (auth)/
+│   │   │   └── login/
+│   │   │       └── page.tsx                 # Admin login page
+│   │   │
+│   │   ├── (dashboard)/                     # Protected routes group
+│   │   │   ├── layout.tsx                   # Auth middleware check
+│   │   │   │
+│   │   │   ├── dashboard/
+│   │   │   │   └── page.tsx                 # Overview — today's run status, last 7 days
+│   │   │   │
+│   │   │   ├── runs/
+│   │   │   │   ├── page.tsx                 # All daily runs list
+│   │   │   │   └── [runId]/
+│   │   │   │       └── page.tsx             # Single run detail — items, blog, social, logs
+│   │   │   │
+│   │   │   ├── feeds/
+│   │   │   │   └── page.tsx                 # Manage Google Alerts RSS feeds
+│   │   │   │
+│   │   │   ├── posts/
+│   │   │   │   ├── page.tsx                 # All blog posts list
+│   │   │   │   └── [postId]/
+│   │   │   │       └── page.tsx             # Single post — content, image, social status
+│   │   │   │
+│   │   │   ├── social/
+│   │   │   │   └── page.tsx                 # All social posts — platform, status, links
+│   │   │   │
+│   │   │   ├── settings/
+│   │   │   │   └── page.tsx                 # Toggles, cron schedule, token status, keys
+│   │   │   │
+│   │   │   └── audit/
+│   │   │       └── page.tsx                 # Full audit log viewer with filters
+│   │   │
+│   │   └── api/
+│   │       │
+│   │       ├── auth/
+│   │       │   ├── login/route.ts           # POST — email/password login, return JWT
+│   │       │   ├── logout/route.ts          # POST — invalidate session
+│   │       │   └── refresh/route.ts         # POST — refresh access token
+│   │       │
+│   │       ├── cron/
+│   │       │   └── run/route.ts             # GET — triggered by Vercel Cron or crontab
+│   │       │                                #        secured by CRON_SECRET header
+│   │       │
+│   │       ├── pipeline/
+│   │       │   ├── trigger/route.ts         # POST — manual full pipeline trigger
+│   │       │   ├── retry/[runId]/route.ts   # POST — retry a failed run
+│   │       │   └── step/route.ts            # POST — retry specific step only
+│   │       │                                #        body: { runId, step: "blog"|"linkedin"|"twitter" }
+│   │       │
+│   │       ├── feeds/
+│   │       │   ├── route.ts                 # GET (list) + POST (add new feed)
+│   │       │   └── [feedId]/route.ts        # PATCH (toggle active) + DELETE
+│   │       │
+│   │       ├── runs/
+│   │       │   ├── route.ts                 # GET — paginated list of daily runs
+│   │       │   └── [runId]/route.ts         # GET — single run full detail
+│   │       │
+│   │       ├── posts/
+│   │       │   ├── route.ts                 # GET — all blog posts
+│   │       │   └── [postId]/route.ts        # GET — single post detail
+│   │       │
+│   │       ├── social/
+│   │       │   └── route.ts                 # GET — all social posts with filters
+│   │       │
+│   │       ├── settings/
+│   │       │   └── route.ts                 # GET + PATCH — app settings
+│   │       │
+│   │       ├── tokens/
+│   │       │   ├── linkedin/route.ts        # OAuth callback + token save
+│   │       │   └── twitter/route.ts         # OAuth callback + token save
+│   │       │
+│   │       └── audit/
+│   │           └── route.ts                 # GET — audit logs with pagination + filters
+│   │
+│   ├── lib/
+│   │   │
+│   │   ├── pipeline/                        # Core pipeline logic
+│   │   │   ├── index.ts                     # Main orchestrator — calls all steps in order
+│   │   │   ├── fetcher.ts                   # Fetch + parse RSS feeds, dedup, save to DB
+│   │   │   ├── ai.ts                        # Cluster stories, generate blog post + social text
+│   │   │   ├── image.ts                     # Playwright HTML card → PNG screenshot
+│   │   │   ├── publisher.ts                 # Publish to Payload CMS or WordPress REST
+│   │   │   ├── linkedin.ts                  # Post to LinkedIn via API v2
+│   │   │   └── twitter.ts                   # Post to X via API v2
+│   │   │
+│   │   ├── auth/
+│   │   │   ├── jwt.ts                       # Sign, verify, refresh JWT tokens
+│   │   │   ├── password.ts                  # bcrypt hash + compare
+│   │   │   ├── middleware.ts                # Auth check for dashboard routes
+│   │   │   └── ratelimit.ts                 # Login rate limiter (5 attempts / 15 min)
+│   │   │
+│   │   ├── crypto/
+│   │   │   └── encrypt.ts                   # AES-256-GCM encrypt/decrypt for OAuth tokens
+│   │   │
+│   │   ├── db/
+│   │   │   └── client.ts                    # Prisma client singleton
+│   │   │
+│   │   ├── storage/
+│   │   │   └── index.ts                     # Save/get images — local or S3 (env-toggled)
+│   │   │
+│   │   ├── logger/
+│   │   │   └── audit.ts                     # Write to audit_logs table
+│   │   │
+│   │   └── utils/
+│   │       ├── hash.ts                      # SHA-256 URL hasher for dedup
+│   │       ├── date.ts                      # Date helpers for run scheduling
+│   │       └── validate.ts                  # Zod schemas for API input validation
+│   │
+│   ├── components/
+│   │   ├── ui/                              # shadcn/ui base components
+│   │   ├── dashboard/
+│   │   │   ├── RunCard.tsx                  # Run status card
+│   │   │   ├── RunTable.tsx                 # Runs list table
+│   │   │   ├── PostCard.tsx                 # Blog post preview card
+│   │   │   ├── SocialStatusBadge.tsx        # LinkedIn/Twitter post status
+│   │   │   ├── AuditLogTable.tsx            # Log viewer
+│   │   │   ├── FeedManager.tsx              # Add/toggle/delete RSS feeds
+│   │   │   ├── SettingsPanel.tsx            # App settings form
+│   │   │   └── TriggerButton.tsx            # Manual run trigger with confirm
+│   │   └── image-templates/
+│   │       └── NewsCard.tsx                 # HTML template rendered by Playwright
+│   │                                        # NOT a React component — plain HTML file
+│   │
+│   ├── templates/
+│   │   └── news-card.html                   # Standalone HTML for Playwright screenshot
+│   │                                        # Accepts: title, date, logo via query params
+│   │
+│   ├── hooks/
+│   │   ├── useRuns.ts                       # SWR/React Query for runs data
+│   │   ├── usePosts.ts
+│   │   └── useAuditLogs.ts
+│   │
+│   ├── types/
+│   │   └── index.ts                         # Shared TypeScript types
+│   │
+│   └── middleware.ts                        # Next.js middleware — protect /dashboard routes
+│
+├── scripts/
+│   └── seed.ts                              # Seed admin user + default settings
+│
+├── .env                                     # Local env (never commit)
+├── .env.example                             # Template with all required keys
+├── next.config.ts
+├── tailwind.config.ts
+└── tsconfig.json
+```
+
+---
+
+## Key File Responsibilities
+
+| File | What it does |
+|---|---|
+| `lib/pipeline/index.ts` | Runs all 6 steps in order, stops on failure, writes run status |
+| `lib/pipeline/fetcher.ts` | Parses RSS XML, hashes URLs, skips duplicates, saves new items |
+| `lib/pipeline/ai.ts` | One API call — clusters, picks top 5, returns blog + social copy |
+| `lib/pipeline/image.ts` | Spins up Playwright, loads news-card.html, screenshots to PNG |
+| `lib/pipeline/publisher.ts` | POSTs to Payload or WP REST API, saves cmsPostId + cmsUrl |
+| `lib/pipeline/linkedin.ts` | Posts using stored encrypted token, handles refresh if expired |
+| `lib/pipeline/twitter.ts` | Posts using OAuth 1.0a keys from env |
+| `lib/crypto/encrypt.ts` | AES-256-GCM — used only for OAuth tokens stored in DB |
+| `lib/auth/middleware.ts` | Validates JWT on every dashboard request server-side |
+| `api/cron/run/route.ts` | Entry point for scheduled runs — verifies CRON_SECRET header |
+| `templates/news-card.html` | Plain HTML, injected with title/date via query params by Playwright |
+
+---
+
+## Environment Variables (.env.example)
+
+```env
+# Database
+DATABASE_URL=
+
+# Auth
+ADMIN_EMAIL=
+ADMIN_PASSWORD_HASH=
+JWT_SECRET=
+REFRESH_TOKEN_SECRET=
+CRON_SECRET=
+
+# AI
+ANTHROPIC_API_KEY=
+# or OPENAI_API_KEY=
+
+# LinkedIn OAuth
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
+LINKEDIN_REDIRECT_URI=
+
+# Twitter / X
+TWITTER_API_KEY=
+TWITTER_API_SECRET=
+TWITTER_ACCESS_TOKEN=
+TWITTER_ACCESS_SECRET=
+
+# CMS
+CMS_TYPE=payload         # "payload" or "wordpress"
+CMS_API_URL=
+CMS_API_KEY=
+
+# Storage
+STORAGE_TYPE=local        # "local" or "s3"
+AWS_S3_BUCKET=
+AWS_REGION=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+
+# Encryption (32-byte hex key for AES-256)
+ENCRYPTION_SECRET=
+
+# App
+NEXT_PUBLIC_APP_URL=
+```
+
+---
+
+## Build Order (What to code first)
+
+```
+1. Prisma schema + migration + seed script
+2. Auth — login, JWT, middleware, rate limiter
+3. RSS fetcher + dedup logic
+4. AI generation (blog + social text)
+5. Playwright image generator
+6. CMS publisher
+7. LinkedIn + Twitter poster
+8. Pipeline orchestrator (index.ts)
+9. Cron API route + manual trigger route
+10. Dashboard UI — runs, posts, social, audit, settings
+```

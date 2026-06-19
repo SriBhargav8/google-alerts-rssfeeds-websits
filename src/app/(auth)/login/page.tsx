@@ -16,11 +16,6 @@ export default function LoginPage() {
     await performLogin(email, password);
   };
 
-  const handleDemoLogin = async () => {
-    setEmail("admin@example.com");
-    setPassword("password123");
-    await performLogin("admin@example.com", "password123");
-  };
 
   const performLogin = async (loginEmail: string, loginPass: string) => {
     setError("");
@@ -122,22 +117,7 @@ export default function LoginPage() {
             </div>
           </form>
 
-          {/* Development Auto-Login Box */}
-          <div className="mt-6 border-t border-slate-100 pt-6">
-            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center">
-              <p className="text-xs text-indigo-800 font-medium mb-3">Development Mode Fast Access</p>
-              <button 
-                type="button" 
-                onClick={handleDemoLogin}
-                disabled={loading}
-                className="w-full bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center space-x-2"
-              >
-                <span>Login to the platform</span>
-                <ArrowRight size={14} />
-              </button>
-            </div>
-          </div>
-          
+
           <div className="mt-6 text-center">
             <p className="text-xs text-slate-400 font-medium">Internal Use Only. Unauthorized access is prohibited.</p>
           </div>

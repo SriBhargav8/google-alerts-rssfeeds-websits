@@ -96,11 +96,16 @@ export async function publishToCMS(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: adminEmail, password: adminPassword })
           });
-          const loginData = await loginRes.json();
-          const token = loginData.token;
+          
+          const errText = await loginRes.text();
+          let loginData: any = {};
+          try { loginData = JSON.parse(errText); } catch(e) {}
+          
+          const token = loginData.token || loginData.user?.token;
  
           if (!token) {
-            throw new Error(`Failed to log in to Payload CMS. Check your email/password.`);
+            const reason = loginData.message || (loginData.errors && loginData.errors[0]?.message) || errText || "Invalid credentials";
+            throw new Error(`Failed to log in to Payload CMS. Reason: ${reason}`);
           }
  
           // 2. Upload image using the JWT token
@@ -223,11 +228,16 @@ export async function publishToCMS(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: adminEmail, password: adminPassword })
     });
-    const loginData = await loginRes.json();
-    const token = loginData.token;
+    
+    const errText2 = await loginRes.text();
+    let loginData2: any = {};
+    try { loginData2 = JSON.parse(errText2); } catch(e) {}
+    
+    const token = loginData2.token || loginData2.user?.token;
 
     if (!token) {
-      throw new Error(`Failed to log in to Payload CMS before publishing post.`);
+      const reason = loginData2.message || (loginData2.errors && loginData2.errors[0]?.message) || errText2 || "Invalid credentials";
+      throw new Error(`Failed to log in to Payload CMS before publishing post. Reason: ${reason}`);
     }
 
     const res = await fetch(postUrl, {

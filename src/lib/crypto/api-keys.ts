@@ -12,17 +12,7 @@ export function maskApiKey(key: string): string {
   if (!key) return "";
   if (key.includes("•")) return key;
   
-  let rawKey = key;
-  if (isEncrypted(key)) {
-    try {
-      rawKey = decrypt(key);
-    } catch (e) {
-      // Use as-is if decryption fails
-    }
-  }
-  
-  if (rawKey.length <= 8) return "••••••••";
-  return `${rawKey.slice(0, 4)}••••${rawKey.slice(-4)}`;
+  return "••••••••";
 }
 
 export function isEncrypted(value: string): boolean {

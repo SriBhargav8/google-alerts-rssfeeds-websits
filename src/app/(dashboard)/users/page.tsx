@@ -8,11 +8,18 @@ export const dynamic = "force-dynamic";
 export default async function UsersPage() {
   const token = cookies().get("auth_token")?.value;
   let currentUserId = null;
+  let role = null;
   if (token) {
     const decoded = verifyToken(token);
     if (decoded && typeof decoded === 'object') {
       currentUserId = (decoded as any).userId;
+      role = (decoded as any).role;
     }
+  }
+
+  if (role !== "ADMIN") {
+    const { redirect } = await import("next/navigation");
+    redirect("/dashboard");
   }
 
   const dbUsers = await prisma.user.findMany({

@@ -421,9 +421,9 @@ function parseInlineMarkdown(text: string, useNofollowLinks: boolean = true) {
 function convertToLexical(markdown: string, useNofollowLinks: boolean = true) {
   if (!markdown) return null;
   
-  // Normalize markdown to ensure headings have blank lines around them
-  // so they don't get merged with paragraphs and discarded
+  // Normalize markdown by stripping carriage returns and ensuring headings have blank lines around them
   let normalized = markdown
+    .replace(/\r/g, "")
     .replace(/^(#{1,6}\s+.+)$/gm, '\n\n$1\n\n');
     
   // Split by double newlines to get blocks (paragraphs, headers, lists)

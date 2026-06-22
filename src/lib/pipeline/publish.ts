@@ -91,9 +91,14 @@ export async function publishToCMS(
           
           // 1. Log in to get secure JWT token
           const loginUrl = new URL(postUrl).origin + "/api/users/login";
+          const cmsOrigin = new URL(postUrl).origin;
           const loginRes = await fetch(loginUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "Origin": cmsOrigin,
+              "Referer": `${cmsOrigin}/`
+            },
             body: JSON.stringify({ email: adminEmail, password: adminPassword })
           });
           
@@ -113,7 +118,9 @@ export async function publishToCMS(
           const mediaRes = await fetch(mediaUrl, {
             method: "POST",
             headers: {
-              "Authorization": `JWT ${token}`
+              "Authorization": `JWT ${token}`,
+              "Origin": cmsOrigin,
+              "Referer": `${cmsOrigin}/`
             },
             body: formData as any
           });
@@ -223,9 +230,14 @@ export async function publishToCMS(
 
     // 1. Log in to get secure JWT token (doing this again to ensure fresh token or if no media was uploaded)
     const loginUrl = new URL(postUrl).origin + "/api/users/login";
+    const cmsOrigin = new URL(postUrl).origin;
     const loginRes = await fetch(loginUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Origin": cmsOrigin,
+        "Referer": `${cmsOrigin}/`
+      },
       body: JSON.stringify({ email: adminEmail, password: adminPassword })
     });
     
@@ -244,7 +256,9 @@ export async function publishToCMS(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `JWT ${token}`
+        "Authorization": `JWT ${token}`,
+        "Origin": cmsOrigin,
+        "Referer": `${cmsOrigin}/`
       },
       body: JSON.stringify(payloadBody)
     });

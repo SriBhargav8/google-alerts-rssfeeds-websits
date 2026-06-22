@@ -59,7 +59,7 @@ export default async function WorkflowRunsPage({ params }: { params: { id: strin
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-3 text-sm text-slate-900 font-medium">
                       <Clock size={16} className="text-slate-400" />
-                      <span>{new Date(run.createdAt).toLocaleString()}</span>
+                      <span>{new Date(run.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

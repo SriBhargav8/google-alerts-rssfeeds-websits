@@ -53,16 +53,18 @@ export default async function WorkflowsPage({ searchParams }: { searchParams: { 
   const totalFiltered = await prisma.workflow.count({ where: whereClause });
   const totalPages = Math.ceil(totalFiltered / limit);
 
-  // Helper to format last run time
   const formatLastRun = (dateStr?: Date | null) => {
     if (!dateStr) return "Never run";
     const d = new Date(dateStr);
-    const now = new Date();
-    const isToday = d.toDateString() === now.toDateString();
-    if (isToday) {
-      return `Today, ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-    }
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    
+    return d.toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   return (

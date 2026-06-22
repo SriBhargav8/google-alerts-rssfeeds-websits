@@ -18,5 +18,6 @@ export function getSession(req: NextRequest): Session | null {
 export function hasRole(session: Session | null, allowedRoles: string[]): boolean {
   if (!session) return false;
   if (!session.role) return false;
-  return allowedRoles.includes(session.role);
+  const upperRole = session.role.toUpperCase();
+  return allowedRoles.some(r => r.toUpperCase() === upperRole);
 }

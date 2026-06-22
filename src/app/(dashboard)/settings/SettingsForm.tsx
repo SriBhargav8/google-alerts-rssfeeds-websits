@@ -44,6 +44,10 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Rec
 
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
 
+  const [specificWorkflowId, setSpecificWorkflowId] = useState("");
+  const [specificRunId, setSpecificRunId] = useState("");
+  const [clearLogsConfirmText, setClearLogsConfirmText] = useState("");
+  
   const toggleKeyVisibility = (providerId: string) => {
     setVisibleKeys((prev) => ({ ...prev, [providerId]: !prev[providerId] }));
   };
@@ -88,13 +92,27 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Rec
   };
 
   const handleClearLogs = async () => {
-    if (!confirm("Are you sure you want to clear all workflow logs, notifications, and processed RSS items? This action cannot be undone.")) return;
+    if (clearLogsConfirmText !== "DELETE") {
+      alert("Please type DELETE to confirm.");
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch("/api/system/clear-logs", { method: "POST" });
+      const payload: any = {};
+      if (specificWorkflowId.trim()) payload.workflowId = specificWorkflowId.trim();
+      if (specificRunId.trim()) payload.runId = specificRunId.trim();
+
+      const res = await fetch("/api/system/clear-logs", { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
       if (res.ok) {
         const data = await res.json();
         alert(`Logs cleared successfully!\n- Runs deleted: ${data.details.runsDeleted}\n- Notifications deleted: ${data.details.notificationsDeleted}\n- RSS Items deleted: ${data.details.processedRssItemsDeleted}`);
+        setSpecificWorkflowId("");
+        setSpecificRunId("");
+        setClearLogsConfirmText("");
         router.refresh();
       } else {
         const err = await res.json();
@@ -450,15 +468,55 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Rec
             </div>
             <div className="p-6 space-y-4">
               <p className="text-xs text-slate-500">
-                If your database is getting too large, you can safely clear out old workflow execution logs, notifications, and processed RSS item records. This will not delete your workflows or configuration.
+                You can safely clear out old workflow execution logs, notifications, and processed RSS item records. This will not delete your workflows or configuration.
               </p>
+
+              <div className="space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Target specific Workflow ID (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={specificWorkflowId}
+                    onChange={(e) => setSpecificWorkflowId(e.target.value)}
+                    placeholder="e.g. cmqkui74y00023z..."
+                    className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Target specific Run ID (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={specificRunId}
+                    onChange={(e) => setSpecificRunId(e.target.value)}
+                    placeholder="e.g. cmqkui74y00023z..."
+                    className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-xs font-mono"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">If both are left empty, ALL historical logs for all workflows will be deleted.</p>
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-4">
+                <label className="text-xs font-bold text-slate-700 flex items-center space-x-1">
+                  <AlertTriangle size={14} className="text-red-500" />
+                  <span>Type <span className="text-slate-900 font-black bg-white px-1 py-0.5 rounded border border-slate-200">DELETE</span> to confirm.</span>
+                </label>
+                <input 
+                  type="text" 
+                  value={clearLogsConfirmText}
+                  onChange={(e) => setClearLogsConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-sm transition-all"
+                />
+              </div>
+
               <button
                 type="button"
                 onClick={handleClearLogs}
-                className="w-full py-2.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-sm font-bold rounded-lg transition-colors flex justify-center items-center space-x-2"
+                disabled={clearLogsConfirmText !== "DELETE" || loading}
+                className="w-full mt-2 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed text-white text-sm font-bold rounded-lg transition-colors flex justify-center items-center space-x-2 shadow-sm"
               >
                 <Trash2 size={16} />
-                <span>Clear Database Logs</span>
+                <span>{loading ? "Deleting..." : "Permanently Clear Logs"}</span>
               </button>
             </div>
           </div>

@@ -218,6 +218,7 @@ export async function runWorkflow(workflowId: string, existingRunId?: string) {
             await log("Publish CMS", `Published to ${type}. Live URL: ${liveCmsUrl}`, "success", { url: liveCmsUrl });
           } catch (e: any) {
             await log("Publish CMS", `${type} publish failed: ${e.message}`, "error");
+            throw new Error(`Failed to publish to ${type} CMS: ${e.message}`);
           }
         }
       }
@@ -255,6 +256,7 @@ export async function runWorkflow(workflowId: string, existingRunId?: string) {
             socialStatus = "FAILED";
             socialError = e.message;
             await log("Publish Social", `${type} post failed: ${e.message}`, "error");
+            throw new Error(`Failed to publish to ${type} Social: ${e.message}`);
           }
 
           await prisma.socialPost.create({

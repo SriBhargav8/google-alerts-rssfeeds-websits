@@ -146,6 +146,7 @@ export async function publishToCMS(
       slug: docSlug,
       content: contentPayload, // HTML string or Lexical editor structure (e.g. blogs collection)
       heroContent: contentPayload, // HTML string or Lexical editor structure (e.g. services collection)
+      Content: contentPayload, // Uppercase support based on error message
       excerpt: post.summary || post.metaDescription || post.title.substring(0, 150), // blogs collection
       shortDescription: post.summary || post.metaDescription || post.title.substring(0, 150), // services collection
       summary: post.summary, // Pass summary directly if the collection uses that exact key

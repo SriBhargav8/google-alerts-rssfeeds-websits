@@ -87,6 +87,26 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Rec
     }
   };
 
+  const handleClearLogs = async () => {
+    if (!confirm("Are you sure you want to clear all workflow logs, notifications, and processed RSS items? This action cannot be undone.")) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/system/clear-logs", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Logs cleared successfully!\n- Runs deleted: ${data.details.runsDeleted}\n- Notifications deleted: ${data.details.notificationsDeleted}\n- RSS Items deleted: ${data.details.processedRssItemsDeleted}`);
+        router.refresh();
+      } else {
+        const err = await res.json();
+        alert(`Failed: ${err.error}`);
+      }
+    } catch (e) {
+      alert("Error clearing logs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleProviderChange = (index: number, field: keyof AiProviderConfig, value: any) => {
     const newProviders = [...providers];
     newProviders[index] = { ...newProviders[index], [field]: value };
@@ -419,6 +439,27 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Rec
                 </div>
               </div>
 
+            </div>
+          </div>
+
+          {/* Database Maintenance */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-slate-100 bg-white flex items-center space-x-3 font-bold text-slate-900 text-lg">
+              <Trash2 size={20} className="text-red-600" />
+              <span>Database Maintenance</span>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-slate-500">
+                If your database is getting too large, you can safely clear out old workflow execution logs, notifications, and processed RSS item records. This will not delete your workflows or configuration.
+              </p>
+              <button
+                type="button"
+                onClick={handleClearLogs}
+                className="w-full py-2.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-sm font-bold rounded-lg transition-colors flex justify-center items-center space-x-2"
+              >
+                <Trash2 size={16} />
+                <span>Clear Database Logs</span>
+              </button>
             </div>
           </div>
 

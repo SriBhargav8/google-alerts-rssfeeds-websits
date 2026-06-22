@@ -76,8 +76,8 @@ function safeParseJSON(raw: string): any {
   } catch (e) {
     console.warn(`[AI] safeParseJSON fallback triggered: ${(e as any).message}`);
     const get = (key: string) => {
-      const m = raw.match(new RegExp(`"${key}"\\s*:\\s*"([^]*?)"(?=[,}])`, "m"));
-      return m ? m[1].replace(/\\n/g, "\n") : "";
+      const m = raw.match(new RegExp(`"${key}"\\s*:\\s*"([^]*?)"\\s*(?:,|\\})`, "m"));
+      return m ? m[1].replace(/\\n/g, "\n").replace(/\\"/g, '"') : "";
     };
     return {
       title: get("title"),
@@ -383,11 +383,11 @@ Return the result STRICTLY as a JSON object with the following fields:
     }
 
     return {
-      title: result.title || `Industry Roundup: ${new Date().toLocaleDateString()}`,
+      title: (result.title || `Industry Roundup: ${new Date().toLocaleDateString()}`).replace(/\*\*/g, ""),
       summary: result.summary || "",
       content: result.content || "",
       sourceUrl: result.sourceUrl || "",
-      metaTitle: result.metaTitle || result.title,
+      metaTitle: (result.metaTitle || result.title || "").replace(/\*\*/g, ""),
       metaDescription: result.metaDescription || "",
       tags: result.tags || "News, Updates",
       socialText: result.socialText || "",

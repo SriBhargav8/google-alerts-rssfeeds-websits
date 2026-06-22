@@ -382,19 +382,22 @@ function parseInlineMarkdown(text: string, useNofollowLinks: boolean = true) {
     
     if (earliestMatch) {
       if (earliestMatch.index > 0) {
-        nodes.push({ text: remaining.slice(0, earliestMatch.index), type: "text", format: 0, version: 1 });
+        nodes.push({ text: remaining.slice(0, earliestMatch.index), type: "text", format: 0, version: 1, mode: "normal", style: "", detail: 0 });
       }
       
       if (earliestMatch.type === 'bold') {
-        nodes.push({ text: earliestMatch.match[1], type: "text", format: 1, version: 1 });
+        nodes.push({ text: earliestMatch.match[1], type: "text", format: 1, version: 1, mode: "normal", style: "", detail: 0 });
       } else if (earliestMatch.type === 'link') {
         nodes.push({
           type: "link",
-          url: earliestMatch.match[2],
-          version: 1,
-          children: [{ text: earliestMatch.match[1], type: "text", format: 0, version: 1 }],
-          rel: useNofollowLinks ? "noopener noreferrer nofollow" : "noopener noreferrer",
-          target: "_blank",
+          fields: {
+            url: earliestMatch.match[2],
+            newTab: true,
+            linkType: "custom",
+            rel: useNofollowLinks ? "noopener noreferrer nofollow" : "noopener noreferrer"
+          },
+          version: 2,
+          children: [{ text: earliestMatch.match[1], type: "text", format: 0, version: 1, mode: "normal", style: "", detail: 0 }],
           format: "",
           indent: 0,
           direction: "ltr"
@@ -403,11 +406,11 @@ function parseInlineMarkdown(text: string, useNofollowLinks: boolean = true) {
       
       remaining = remaining.slice(earliestMatch.index + earliestMatch.length);
     } else {
-      nodes.push({ text: remaining, type: "text", format: 0, version: 1 });
+      nodes.push({ text: remaining, type: "text", format: 0, version: 1, mode: "normal", style: "", detail: 0 });
       break;
     }
   }
-  return nodes.length > 0 ? nodes : [{ text, type: "text", format: 0, version: 1 }];
+  return nodes.length > 0 ? nodes : [{ text, type: "text", format: 0, version: 1, mode: "normal", style: "", detail: 0 }];
 }
 
 function convertToLexical(markdown: string, useNofollowLinks: boolean = true) {

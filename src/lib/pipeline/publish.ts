@@ -146,7 +146,6 @@ export async function publishToCMS(
       slug: docSlug,
       content: contentPayload, // HTML string or Lexical editor structure (e.g. blogs collection)
       heroContent: contentPayload, // HTML string or Lexical editor structure (e.g. services collection)
-      Content: contentPayload, // Uppercase support based on error message
       excerpt: post.summary || post.metaDescription || post.title.substring(0, 150), // blogs collection
       shortDescription: post.summary || post.metaDescription || post.title.substring(0, 150), // services collection
       summary: post.summary, // Pass summary directly if the collection uses that exact key
@@ -367,20 +366,24 @@ function parseInlineMarkdown(text: string, useNofollowLinks: boolean = true) {
   while (remaining.length > 0) {
     const boldMatch = remaining.match(/\*\*(.*?)\*\*/);
     const linkMatch = remaining.match(/\[(.*?)\]\((.*?)\)/);
+    const newlineMatch = remaining.match(/\n/);
     
-    let earliestMatch: { index: number; length: number; type: 'bold' | 'link'; match: RegExpMatchArray } | null = null;
+    const matches: { index: number; length: number; type: 'bold' | 'link' | 'newline'; match: any }[] = [];
     
     if (boldMatch && boldMatch.index !== undefined) {
-      earliestMatch = { index: boldMatch.index, length: boldMatch[0].length, type: 'bold', match: boldMatch };
+      matches.push({ index: boldMatch.index, length: boldMatch[0].length, type: 'bold', match: boldMatch });
     }
-    
     if (linkMatch && linkMatch.index !== undefined) {
-      if (!earliestMatch || linkMatch.index < earliestMatch.index) {
-        earliestMatch = { index: linkMatch.index, length: linkMatch[0].length, type: 'link', match: linkMatch };
-      }
+      matches.push({ index: linkMatch.index, length: linkMatch[0].length, type: 'link', match: linkMatch });
+    }
+    if (newlineMatch && newlineMatch.index !== undefined) {
+      matches.push({ index: newlineMatch.index, length: 1, type: 'newline', match: newlineMatch });
     }
     
-    if (earliestMatch) {
+    if (matches.length > 0) {
+      matches.sort((a, b) => a.index - b.index);
+      const earliestMatch = matches[0];
+      
       if (earliestMatch.index > 0) {
         nodes.push({ text: remaining.slice(0, earliestMatch.index), type: "text", format: 0, version: 1, mode: "normal", style: "", detail: 0 });
       }
@@ -397,11 +400,13 @@ function parseInlineMarkdown(text: string, useNofollowLinks: boolean = true) {
             rel: useNofollowLinks ? "noopener noreferrer nofollow" : "noopener noreferrer"
           },
           version: 2,
-          children: [{ text: earliestMatch.match[1], type: "text", format: 0, version: 1, mode: "normal", style: "", detail: 0 }],
+          children: [{ text: earliestMatch.match[1] || "Link", type: "text", format: 0, version: 1, mode: "normal", style: "", detail: 0 }],
           format: "",
           indent: 0,
           direction: "ltr"
         });
+      } else if (earliestMatch.type === 'newline') {
+        nodes.push({ type: "linebreak", version: 1 });
       }
       
       remaining = remaining.slice(earliestMatch.index + earliestMatch.length);
@@ -492,6 +497,17 @@ function convertToLexical(markdown: string, useNofollowLinks: boolean = true) {
     });
   }
   
+  if (children.length === 0) {
+    children.push({
+      type: "paragraph",
+      format: "",
+      indent: 0,
+      version: 1,
+      children: [{ text: "", type: "text", format: 0, version: 1, mode: "normal", style: "", detail: 0 }],
+      direction: "ltr"
+    });
+  }
+
   return {
     root: {
       type: "root",

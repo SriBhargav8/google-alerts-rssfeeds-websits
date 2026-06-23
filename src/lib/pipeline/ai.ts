@@ -158,36 +158,86 @@ export async function scoreAndClusterItems(
   topicName: string,
   aiProviderId?: string | null,
   enableStrictFiltering: boolean = true
-): Promise<{ selectedItems: RssItem[]; skippedItemIds: string[] }> {
+): Promise<{ selectedItems: RssItem[]; skippedItemIds: string[]; rawAiJson?: any }> {
   console.log(`[RANKING] Scoring and clustering ${items.length} items for topic "${topicName}"...`);
-  if (!items.length) return { selectedItems: [], skippedItemIds: [] };
+  if (!items.length) return { selectedItems: [], skippedItemIds: [], rawAiJson: null };
+
+  // PRE-FILTER: Reject "opinion", "sponsored", "ad" and items older than 7 days before AI sees them
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const spamRegex = /\b(opinion|sponsored|ad)\b/i;
+
+  const preFilteredItems: RssItem[] = [];
+  const autoSkippedIds: string[] = [];
+
+  for (const item of items) {
+    const titleRegexMatch = spamRegex.test(item.title);
+    const pubDate = item.publishedAt ? new Date(item.publishedAt).getTime() : new Date(item.fetchedAt).getTime();
+    const isOld = (now - pubDate) > SEVEN_DAYS_MS;
+
+    if (titleRegexMatch || isOld) {
+      autoSkippedIds.push(item.id);
+    } else {
+      preFilteredItems.push(item);
+    }
+  }
+
+  if (autoSkippedIds.length > 0) {
+    console.log(`[RANKING] Pre-filtered ${autoSkippedIds.length} items (spam/opinion/older than 7 days).`);
+  }
+
+  if (!preFilteredItems.length) {
+    return { selectedItems: [], skippedItemIds: autoSkippedIds, rawAiJson: null };
+  }
 
   const config = await getAiConfig(aiProviderId);
 
   // We will ask the LLM (using a cheaper/faster model setup if available, or the same provider)
   // to cluster similar articles and score relevance 1-10
-  const systemPrompt = "You are a news curator AI. You group duplicate stories and score their relevance (1-10) to a specific topic.";
+  const systemPrompt = `You are a content relevance scorer for LegalSuvidha, an Indian legal and tax compliance services company serving business owners, startup founders, and CAs.
+
+Your job is to filter news articles and keep only those that are directly useful for publishing on LegalSuvidha's blog.
+
+ALWAYS REJECT (score 1-3):
+- Opinion pieces, editorials, sponsored content
+- Crime, politics, sports, entertainment
+- Global news with no India business/compliance angle
+- Personal finance (stock tips, mutual funds, insurance)
+- Articles older than 7 days
+- Vague or generic business news with no actionable compliance angle
+
+ALWAYS ACCEPT (score 8-10):
+- CBDT, MCA, GSTN, SEBI, EPFO, RBI official notifications
+- Compliance deadline changes or extensions
+- Tax rate or slab changes
+- Court rulings directly impacting business compliance
+- New government scheme or policy for businesses or startups
+
+You also group duplicate stories.`;
   
   const userPrompt = `
-    I have a list of recent news articles.
-    Your task is to:
-    1. Group/cluster similar articles that discuss the exact same news story or announcement together.
-    2. For each cluster/group, select the single best/most informative article ID to represent it.
-    3. Score the relevance of that representative article from 1 (completely irrelevant) to 10 (highly relevant) to this topic: "${topicName}". ${enableStrictFiltering ? '\n       - Give a score of 1-3 if the article is only tangentially related or completely off-topic (e.g. general science news, entirely different tax types, random spam).\n       - Give a score of 8-10 ONLY if the article is directly focused on the core topic.' : ''}
-       
-    Articles:
-    ${items.map(item => `ID: ${item.id}\nTitle: ${item.title}\nSnippet: ${item.snippet || "No snippet"}\nSource: ${item.source || "Unknown"}\n---`).join("\n")}
-    
-    Return the result STRICTLY as a JSON object with this format:
+Workflow topic: ${topicName}
+
+You have a list of recent news articles.
+Your task is to:
+1. Group duplicate stories covering the exact same announcement together.
+2. Pick the single best article from each group.
+3. Score relevance 1-10 based on how directly useful this article is for LegalSuvidha's audience on the topic: ${topicName}
+
+Articles:
+${preFilteredItems.map(item => `ID: ${item.id}\nTitle: ${item.title}\nSnippet: ${item.snippet || "No snippet"}\nSource: ${item.source || "Unknown"}\n---`).join("\n")}
+
+Return STRICTLY as JSON:
+{
+  "clusters": [
     {
-      "clusters": [
-        {
-          "representativeId": "item-id-here",
-          "duplicateIds": ["duplicate-id-1", "duplicate-id-2"],
-          "relevanceScore": 8.5
-        }
-      ]
+      "representativeId": "item-id-here",
+      "duplicateIds": ["duplicate-id-1"],
+      "relevanceScore": 8.5,
+      "reason": "CBDT circular on TDS directly impacts compliance"
     }
+  ]
+}
   `;
 
   let responseStr = "{}";
@@ -198,14 +248,14 @@ export async function scoreAndClusterItems(
     console.error(`[RANKING] AI call failed: ${error.message}`);
     // Fallback: if AI scoring fails, treat all items as independent and sort them solely by date
     console.log("[RANKING] Falling back to date-based sorting only.");
-    const sorted = [...items].sort((a, b) => {
+    const sorted = [...preFilteredItems].sort((a, b) => {
       const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : new Date(a.fetchedAt).getTime();
       const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : new Date(b.fetchedAt).getTime();
       return dateB - dateA;
     });
     const selected = sorted.slice(0, 10);
-    const skipped = sorted.slice(10).map(i => i.id);
-    return { selectedItems: selected, skippedItemIds: skipped };
+    const skipped = [...autoSkippedIds, ...sorted.slice(10).map(i => i.id)];
+    return { selectedItems: selected, skippedItemIds: skipped, rawAiJson: { error: "AI call failed" } };
   }
 
   const parsed = safeParseJSON(responseStr);
@@ -214,14 +264,14 @@ export async function scoreAndClusterItems(
   // If the AI returns empty clusters (or the fallback parser failed to extract them), gracefully fallback to date-based sorting
   if (clusters.length === 0) {
     console.log("[RANKING] AI returned empty clusters. Falling back to date-based sorting.");
-    const sorted = [...items].sort((a, b) => {
+    const sorted = [...preFilteredItems].sort((a, b) => {
       const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : new Date(a.fetchedAt).getTime();
       const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : new Date(b.fetchedAt).getTime();
       return dateB - dateA;
     });
     const selected = sorted.slice(0, 10);
-    const skipped = sorted.slice(10).map(i => i.id);
-    return { selectedItems: selected, skippedItemIds: skipped };
+    const skipped = [...autoSkippedIds, ...sorted.slice(10).map(i => i.id)];
+    return { selectedItems: selected, skippedItemIds: skipped, rawAiJson: parsed };
   }
   
   const representativeScores: Record<string, number> = {};
@@ -238,7 +288,7 @@ export async function scoreAndClusterItems(
   }
 
   // Programmatic Recency Boost
-  const scoredItemsList = items.filter(item => allRepresentedIds.has(item.id)).map(item => {
+  const scoredItemsList = preFilteredItems.filter(item => allRepresentedIds.has(item.id)).map(item => {
     const relevance = representativeScores[item.id] || 5.0;
     const pubDate = item.publishedAt ? new Date(item.publishedAt) : new Date(item.fetchedAt);
     const hoursAgo = (Date.now() - pubDate.getTime()) / (1000 * 60 * 60);
@@ -270,16 +320,16 @@ export async function scoreAndClusterItems(
   const selectedIds = new Set(selectedItems.map(i => i.id));
 
   // Determine skipped item IDs (duplicates + representatives that didn't make the top 10)
-  const skippedItemIds: string[] = [];
+  const skippedItemIds: string[] = [...autoSkippedIds];
   
-  for (const item of items) {
+  for (const item of preFilteredItems) {
     if (!selectedIds.has(item.id)) {
       skippedItemIds.push(item.id);
     }
   }
 
   console.log(`[RANKING] Selected ${selectedItems.length} items. Skipped/deduped ${skippedItemIds.length} items.`);
-  return { selectedItems, skippedItemIds };
+  return { selectedItems, skippedItemIds, rawAiJson: parsed };
 }
 
 const defaultUserPromptTemplate = `

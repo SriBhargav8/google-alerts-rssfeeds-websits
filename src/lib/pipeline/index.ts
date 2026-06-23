@@ -85,7 +85,7 @@ export async function runWorkflow(workflowId: string, existingRunId?: string) {
 
     // ── Step 1.5: Relevance Filter & Clustering ──────────────────────────────
     await log("Relevance Filter", "Scoring and clustering items based on relevance and recency...", "info");
-    const { selectedItems, skippedItemIds } = await scoreAndClusterItems(
+    const { selectedItems, skippedItemIds, rawAiJson } = await scoreAndClusterItems(
       newItems,
       workflow.name,
       workflow.aiProviderId,
@@ -122,7 +122,8 @@ export async function runWorkflow(workflowId: string, existingRunId?: string) {
 
     await log("Relevance Filter", `Selected ${selectedItems.length} top-scoring unique item(s) to process. Skipped ${skippedItemIds.length} duplicate/low-score item(s).`, "success", {
       selectedCount: selectedItems.length,
-      skippedCount: skippedItemIds.length
+      skippedCount: skippedItemIds.length,
+      aiReasoning: rawAiJson
     });
 
     // ── Step 1.75: Full-Text Scraping ────────────────────────────────────────

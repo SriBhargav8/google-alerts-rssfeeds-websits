@@ -76,8 +76,13 @@ function safeParseJSON(raw: string): any {
   } catch (e) {
     console.warn(`[AI] safeParseJSON fallback triggered: ${(e as any).message}`);
     const get = (key: string) => {
-      const m = raw.match(new RegExp(`"${key}"\\s*:\\s*"([^]*?)"\\s*(?:,|\\})`, "m"));
-      return m ? m[1].replace(/\\n/g, "\n").replace(/\\"/g, '"') : "";
+      // Use [\s\S] instead of [^] for safer multiline matching
+      const m = raw.match(new RegExp(`"${key}"\\s*:\\s*"([\\s\\S]*?)"\\s*(?:,|\\})`, "m"));
+      if (!m) return "";
+      let val = m[1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
+      // Fix potential trailing quotes caught by regex
+      if (val.endsWith('"')) val = val.substring(0, val.length - 1);
+      return val;
     };
     return {
       title: get("title"),
@@ -350,8 +355,8 @@ CRITICAL WRITING INSTRUCTIONS (To bypass AI detectors and rank on Google):
 {{socialInstructions}}
 
 Return the result strictly as a JSON object with the following fields:
-- title: The headline for the roundup
-- summary: A detailed summary of at least 200 to 250 characters long.
+- title: The headline for the roundup (MAX 100 characters)
+- summary: A detailed summary of at least 200 to 250 characters long. STRICTLY NO MARKDOWN ALLOWED IN SUMMARY (No ** or #).
 - content: The markdown content
 - sourceUrl: The primary original source URL (if requested)
 - metaTitle: SEO title (max 60 chars)
@@ -400,8 +405,8 @@ export async function clusterItemsAndGeneratePost(
   const jsonInstructions = `
 
 Return the result STRICTLY as a JSON object with the following fields:
-- title: The headline for the ${options?.isRoundup ? 'roundup' : 'article'}
-- summary: A professional, detailed summary of at least 200 to 250 characters long. Do not use conversational filler like "This article covers".${sourceLinkInstruction}
+- title: The headline for the ${options?.isRoundup ? 'roundup' : 'article'} (MAX 100 CHARACTERS)
+- summary: A professional, detailed summary of at least 200 to 250 characters long. Do not use conversational filler like "This article covers". STRICTLY NO MARKDOWN ALLOWED (No ** or #).${sourceLinkInstruction}
 - metaTitle: SEO title (max 60 chars)
 - metaDescription: SEO description (max 150 chars)
 - tags: Comma separated tags
@@ -433,8 +438,8 @@ Return the result STRICTLY as a JSON object with the following fields:
     }
 
     return {
-      title: (result.title || `Industry Roundup: ${new Date().toLocaleDateString()}`).replace(/\*\*/g, ""),
-      summary: result.summary || "",
+      title: (result.title || `Industry Roundup: ${new Date().toLocaleDateString()}`).replace(/\*\*/g, "").substring(0, 145),
+      summary: (result.summary || "").replace(/\*\*/g, "").replace(/#/g, ""),
       content: result.content || "",
       sourceUrl: result.sourceUrl || "",
       metaTitle: (result.metaTitle || result.title || "").replace(/\*\*/g, ""),

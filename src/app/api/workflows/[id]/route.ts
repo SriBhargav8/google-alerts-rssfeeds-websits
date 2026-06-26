@@ -5,7 +5,7 @@ import { getSession, hasRole } from "@/lib/auth/server";
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = getSession(req);
-    if (!hasRole(session, ["ADMIN", "EDITOR"])) {
+    if (!hasRole(session, ["ADMIN", "EDITOR", "VIEWER"])) {
       return NextResponse.json({ error: "Unauthorized. Editor or Admin access required." }, { status: 403 });
     }
 
@@ -60,8 +60,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = getSession(req);
-    // Let's say only ADMIN can delete workflows
-    if (!hasRole(session, ["ADMIN"])) {
+    if (!hasRole(session, ["ADMIN", "EDITOR", "VIEWER"])) {
       return NextResponse.json({ error: "Unauthorized. Admin access required." }, { status: 403 });
     }
 

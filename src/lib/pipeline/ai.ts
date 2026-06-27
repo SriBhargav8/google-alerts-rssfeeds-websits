@@ -136,6 +136,8 @@ async function callLlm(
         "HTTP-Referer": "http://localhost:3000",
         "X-Title": "AutoFeed"
       };
+    } else if (providerType === "groq") {
+      openaiConfig.baseURL = "https://api.groq.com/openai/v1";
     }
     
     const openai = new OpenAI(openaiConfig);
@@ -145,7 +147,7 @@ async function callLlm(
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      response_format: providerType === "openai" ? { type: "json_object" } : undefined
+      response_format: (providerType === "openai" || providerType === "groq") ? { type: "json_object" } : undefined
     });
 
     await trackCost(
@@ -484,6 +486,9 @@ async function trackCost(providerType: string, model: string, inputTokens: numbe
         inputRate = 15.0;
         outputRate = 75.0;
       }
+    } else if (providerType === "groq") {
+      inputRate = 0.05;
+      outputRate = 0.08;
     }
 
     const calculatedCost = (inputTokens * inputRate + outputTokens * outputRate) / 1000000;

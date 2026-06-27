@@ -200,6 +200,13 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Rec
         </div>
       );
     }
+    if (type === "groq") {
+      return (
+        <div className="w-10 h-10 bg-[#f55036] rounded-md flex items-center justify-center text-white font-black tracking-tighter text-sm border border-orange-600">
+          G
+        </div>
+      );
+    }
     return (
       <div className="w-10 h-10 bg-slate-100 rounded-md flex items-center justify-center text-slate-400 border border-slate-200">
         <Bot size={20} />
@@ -278,6 +285,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings: Rec
                               <option value="openai">OpenAI</option>
                               <option value="anthropic">Anthropic</option>
                               <option value="openrouter">OpenRouter</option>
+                              <option value="groq">Groq</option>
                             </select>
                             {isConfigured ? (
                               <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold tracking-widest px-2 py-0.5 rounded uppercase">Connected</span>

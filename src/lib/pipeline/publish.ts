@@ -68,7 +68,13 @@ export async function publishToCMS(
       } catch (e) {}
     }
 
-    const docSlug = post.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yy = String(now.getFullYear()).slice(-2);
+    const dateSuffix = `${dd}${mm}${yy}`;
+    const baseSlug = post.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const docSlug = `${baseSlug}-${dateSuffix}`;
     
     // Convert content depending on requested format
     let contentPayload: any = "";
@@ -252,7 +258,7 @@ export async function publishToCMS(
       throw new Error(`Failed to log in to Payload CMS before publishing post. Reason: ${reason}`);
     }
 
-    const res = await fetch(postUrl, {
+    let res = await fetch(postUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -263,7 +269,51 @@ export async function publishToCMS(
       body: JSON.stringify(payloadBody)
     });
     
-    if (!res.ok) throw new Error(`Payload CMS error: ${await res.text()}`);
+    if (!res.ok) {
+      let errorText = await res.text();
+      let readableError = errorText;
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.errors && parsed.errors.length > 0) {
+          readableError = parsed.errors.map((e: any) => e.message).join(", ");
+        } else if (parsed.message) {
+          readableError = parsed.message;
+        }
+      } catch(e) {}
+      
+      // If the slug is rejected (likely due to a duplicate constraint), append a unique ID and retry
+      if (errorText.includes("The following field is invalid: slug")) {
+        const uniqueId = Math.random().toString(36).substring(2, 6);
+        payloadBody.slug = `${docSlug}-${uniqueId}`;
+        
+        res = await fetch(postUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `JWT ${token}`,
+            "Origin": cmsOrigin,
+            "Referer": `${cmsOrigin}/`
+          },
+          body: JSON.stringify(payloadBody)
+        });
+        
+        if (!res.ok) {
+          let retryErrText = await res.text();
+          try {
+            const parsed = JSON.parse(retryErrText);
+            if (parsed.errors && parsed.errors.length > 0) {
+              retryErrText = parsed.errors.map((e: any) => e.message).join(", ");
+            } else if (parsed.message) {
+              retryErrText = parsed.message;
+            }
+          } catch(e) {}
+          throw new Error(`Payload CMS error after retry: ${retryErrText}`);
+        }
+      } else {
+        throw new Error(`Payload CMS error: ${readableError}`);
+      }
+    }
+
     const data = await res.json();
     
     const docId = data.id || data.doc?.id || "";
@@ -274,6 +324,11 @@ export async function publishToCMS(
     const parts = postUrl.split("/api/");
     let collectionName = parts[1] || "posts";
     collectionName = collectionName.replace(/^\/+|\/+$/g, ""); // Strip trailing/leading slashes
+    
+    // Convert legal-updates to latest-updates for the frontend URL
+    if (collectionName === "legal-updates") {
+      collectionName = "latest-updates";
+    }
     
     return `${origin}/${collectionName}/${slugValue}`;
   }

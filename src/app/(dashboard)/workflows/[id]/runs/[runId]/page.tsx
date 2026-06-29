@@ -233,7 +233,7 @@ export default async function RunDetailsPage({ params }: { params: { id: string;
                       )}
                       
                       <div className="flex items-center space-x-3 text-xs text-slate-500 font-medium mb-8 pb-4 border-b border-slate-100">
-                        <span>Published: {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(post.createdAt))}</span>
+                        <span>Published: {new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(post.createdAt))}</span>
                         <span>•</span>
                         <span>Author: AutoFeed Bot</span>
                       </div>

@@ -137,7 +137,7 @@ export default async function DashboardOverview() {
                   </td>
                   <td className="px-6 py-4">
                     <p className="text-sm text-slate-600">
-                      {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(run.createdAt))}
+                      {new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(run.createdAt))}
                     </p>
                     <p className="text-xs text-slate-500 mt-0.5">
                       Duration: {run.durationMs ? `${Math.round(run.durationMs / 1000)}s` : 'Unknown'}
@@ -198,7 +198,7 @@ export default async function DashboardOverview() {
                 </div>
                 <div className="flex justify-between items-center text-xs text-slate-500 pt-1">
                   <div>
-                    <p>Run: {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(run.createdAt))}</p>
+                    <p>Run: {new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(run.createdAt))}</p>
                     <p className="mt-0.5">Duration: {run.durationMs ? `${Math.round(run.durationMs / 1000)}s` : 'Unknown'}</p>
                   </div>
                   <Link 

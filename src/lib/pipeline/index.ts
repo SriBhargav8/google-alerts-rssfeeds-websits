@@ -190,10 +190,20 @@ export async function runWorkflow(workflowId: string, existingRunId?: string) {
         generated.sourceUrl = null;
       }
 
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yy = String(now.getFullYear()).slice(-2);
+      const dateSuffix = `${dd}${mm}${yy}`;
+      const baseSlug = generated.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      const generatedSlug = `${baseSlug}-${dateSuffix}`;
+
       await log("AI Generation", `${modeText} Content generated: "${generated.title}"`, "success", {
         title: generated.title,
+        slug: generatedSlug,
         metaTitle: generated.metaTitle,
         tags: generated.tags,
+        summary: generated.summary,
       });
 
       // ── Step 2.5: Hero Image ──────────────────────────────────────────────────
